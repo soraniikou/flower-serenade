@@ -330,7 +330,7 @@ function makeFallingPetal() {
   return {
     x: rand(0, W), y: rand(-40, -10),
     size: rand(4, 11),
-    speedY: rand(0.35, 0.95),
+    speedY: rand(0.175, 0.475),
     speedX: rand(-0.25, 0.25),
     rot: rand(0, Math.PI * 2),
     rotSpeed: rand(-0.02, 0.02),
@@ -516,7 +516,7 @@ function loop() {
 
   // after the closing message, small petals drift slowly down from the top
   if (sceneActive && finalStarted) {
-    if (fallingPetals.length < 70 && Math.random() < 0.12) {
+    if (fallingPetals.length < 56 && Math.random() < 0.12) {
       fallingPetals.push(makeFallingPetal());
     }
     for (const fp of fallingPetals) drawFallingPetal(fp);
