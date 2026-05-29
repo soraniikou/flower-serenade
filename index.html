@@ -168,6 +168,7 @@ const backBtn = document.getElementById('backBtn');
 const volFill = document.getElementById('volFill');
 
 let W, H, cx, cy, DPR;
+let audioCtx;
 let analyser, dataArray;
 let volume = 0, smoothVolume = 0;
 let progress = 0;        // 0..1, accumulated voice energy
@@ -413,7 +414,7 @@ startBtn.addEventListener('click', async () => {
   startBtn.textContent = 'Connecting...';
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') await audioCtx.resume();
     const source = audioCtx.createMediaStreamSource(stream);
     analyser = audioCtx.createAnalyser();
@@ -443,9 +444,13 @@ backBtn.addEventListener('click', () => {
 
 function getVolume() {
   analyser.getByteFrequencyData(dataArray);
+  const binHz = (audioCtx.sampleRate / 2) / dataArray.length;
+  const voiceLow  = Math.floor(85  / binHz);
+  const voiceHigh = Math.ceil(255 / binHz);
   let sum = 0;
-  for (let i = 3; i < 40; i++) sum += dataArray[i];
-  return sum / 37 / 255;
+  for (let i = voiceLow; i <= voiceHigh; i++) sum += dataArray[i];
+  const avg = sum / (voiceHigh - voiceLow + 1) / 255;
+  return avg;
 }
 
 let lastPhase = 1;
