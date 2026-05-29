@@ -474,6 +474,27 @@ function loop() {
     // full bloom: reveal the closing message once, typed one letter at a time
     if (progress >= 1 && !finalStarted) {
       finalStarted = true;
+
+      const voice = new Audio('./public/audio/voice-final.mp3');
+      voice.volume = 0;
+      voice.play();
+
+      // 0.5秒かけてフェードイン
+      let vol = 0;
+      const fadeIn = setInterval(() => {
+        vol = Math.min(vol + 0.05, 1);
+        voice.volume = vol;
+        if (vol >= 1) clearInterval(fadeIn);
+      }, 25);
+
+      // 音声終了の2秒前からフェードアウト
+      voice.addEventListener('timeupdate', () => {
+        const remaining = voice.duration - voice.currentTime;
+        if (remaining < 2 && voice.volume > 0) {
+          voice.volume = Math.max(voice.volume - 0.015, 0);
+        }
+      });
+
       const finalMsg = document.getElementById('finalMsg');
       finalMsg.classList.add('show');
       const text = 'The flowers sway and fall';
