@@ -87,13 +87,23 @@
     color: rgba(210,224,245,0.7); transition: color 1.5s ease;
   }
 
-  #bottomHint {
-    position: fixed; bottom: 26px; left: 50%;
+  #backBtn {
+    display: none;
+    position: fixed; bottom: 22px; left: 50%;
     transform: translateX(-50%);
-    font-size: 10px; letter-spacing: 0.26em; text-transform: uppercase;
-    color: rgba(210,224,245,0.45); text-align: center;
-    transition: color 1.5s ease;
+    pointer-events: auto;
+    background: rgba(40,110,220,0.85);
+    border: 1px solid rgba(120,180,255,0.9);
+    color: #ffffff;
+    font-family: inherit; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.24em; text-transform: uppercase;
+    padding: 11px 26px; border-radius: 40px;
+    cursor: pointer; transition: all 0.3s ease;
+    box-shadow: 0 0 16px rgba(60,140,255,0.55);
+    backdrop-filter: blur(4px);
   }
+  #backBtn:hover, #backBtn:active { background: rgba(60,140,255,0.95); box-shadow: 0 0 22px rgba(90,160,255,0.8); }
+  #backBtn.show { display: block; }
 
   #volMeter {
     position: fixed; bottom: 54px; left: 50%;
@@ -106,6 +116,23 @@
     background: rgba(200,220,250,0.8);
     transition: width 0.06s linear, background 1.5s ease;
   }
+
+  #finalMsg {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Great Vibes', cursive;
+    font-size: clamp(27px, 7.7vw, 46px);
+    color: rgba(220, 100, 140, 0.95);
+    text-align: center;
+    opacity: 0;
+    transition: opacity 2s ease;
+    pointer-events: none;
+    text-shadow: 0 0 20px rgba(255,150,180,0.6);
+    z-index: 15;
+  }
+  #finalMsg.show { opacity: 1; }
 </style>
 </head>
 <body>
@@ -118,7 +145,8 @@
     <div id="phaseLabel">Phase I &mdash; Geometry</div>
   </div>
   <div id="volMeter"><div id="volFill"></div></div>
-  <div id="bottomHint">Speak &mdash; let the shapes bloom</div>
+  <button id="backBtn">&larr; Back</button>
+  <div id="finalMsg"></div>
 </div>
 
 <div id="intro">
@@ -136,7 +164,7 @@ const startBtn = document.getElementById('startBtn');
 const hud = document.getElementById('hud');
 const progressFill = document.getElementById('progressFill');
 const phaseLabel = document.getElementById('phaseLabel');
-const bottomHint = document.getElementById('bottomHint');
+const backBtn = document.getElementById('backBtn');
 const volFill = document.getElementById('volFill');
 
 let W, H, cx, cy, DPR;
@@ -145,8 +173,11 @@ let volume = 0, smoothVolume = 0;
 let progress = 0;        // 0..1, accumulated voice energy
 let morph = 0;           // 0 = geometry, 1 = flower
 let isRunning = false;
+let sceneActive = false;
+let finalStarted = false;
 let particles = [];
-const MAX_PARTICLES = 21;
+let fallingPetals = [];
+const MAX_PARTICLES = 13;
 
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -174,7 +205,11 @@ function lerpHue(a, b, t) {
 }
 
 // ---------- particle ----------
-function makeParticle(initial) {
+let bornCount = 0;
+let lastBorn = 0;
+const APPEAR_MS = 300;                  // 0.3s soft scale-up on birth
+
+function makeParticle(index) {
   const sidesPool = [3, 4, 6];          // triangle, diamond, hexagon
   const cold = Math.random();
   let coldH, coldS, coldL;
@@ -183,32 +218,34 @@ function makeParticle(initial) {
 
   const warm = Math.random();
   let warmH, warmS, warmL;
-  if (warm < 0.34)      { warmH = rand(330, 350); warmS = rand(55, 78); warmL = rand(76, 88); } // pink
-  else if (warm < 0.52) { warmH = rand(270, 292); warmS = rand(45, 68); warmL = rand(74, 86); } // purple
-  else if (warm < 0.66) { warmH = rand(188, 202); warmS = rand(48, 70); warmL = rand(78, 88); } // light blue
-  else if (warm < 0.79) { warmH = rand(110, 142); warmS = rand(40, 60); warmL = rand(72, 84); } // green
-  else if (warm < 0.91) { warmH = rand(46, 56);   warmS = rand(55, 72); warmL = rand(82, 90); } // pale yellow
-  else                  { warmH = rand(20, 45);   warmS = rand(8, 22);  warmL = rand(88, 95); } // white
+  if (warm < 0.28)      { warmH = rand(330, 345); warmS = rand(78, 92); warmL = rand(60, 70); } // deep pink
+  else if (warm < 0.48) { warmH = rand(6, 18);    warmS = rand(82, 94); warmL = rand(64, 73); } // coral
+  else if (warm < 0.68) { warmH = rand(262, 282); warmS = rand(52, 70); warmL = rand(66, 76); } // wisteria (fuji)
+  else if (warm < 0.86) { warmH = rand(196, 210); warmS = rand(70, 88); warmL = rand(66, 77); } // sky blue
+  else                  { warmH = rand(118, 145); warmS = rand(52, 70); warmL = rand(60, 72); } // green
 
-  // home position: loose rings around center, biased to fill portrait screen
-  const ang = rand(0, Math.PI * 2);
-  const rad = Math.pow(Math.random(), 0.7) * Math.min(W, H) * 0.55;
+  // bloom outward one by one: golden-angle spiral so each new flower lands
+  // further from the center than the last
+  const golden = 2.399963229728653;
+  const ang = index * golden + rand(-0.18, 0.18);
+  const rad = Math.sqrt(index) * Math.min(W, H) * 0.092;
   const hx = cx + Math.cos(ang) * rad;
-  const hy = cy + Math.sin(ang) * rad * 1.15;
+  const hy = cy + Math.sin(ang) * rad * 1.12;
 
   return {
+    idx: index, ang: ang,
     homeX: hx, homeY: hy,
-    x: initial ? hx : cx + rand(-30, 30),
-    y: initial ? hy : cy + rand(-30, 30),
+    x: cx, y: cy,                       // every flower is born at the center
+    born: performance.now(),
     vx: 0, vy: 0,
-    size: rand(26, 64),
+    size: rand(15, 56),
     rot: rand(0, Math.PI * 2),
-    rotSpeed: rand(-0.006, 0.006),
+    rotSpeed: rand(-0.011, 0.011),
     sides: sidesPool[Math.floor(Math.random() * sidesPool.length)],
     petals: [5, 6, 8][Math.floor(Math.random() * 3)],
     alpha: rand(0.45, 0.85),
     coldH, coldS, coldL, warmH, warmS, warmL,
-    spin: rand(0.6, 1.6),
+    spin: rand(0.4, 2.1),
     disp: rand(0.5, 1.2)
   };
 }
@@ -228,7 +265,10 @@ function shapeRadius(theta, sides, petals, m) {
 }
 
 function drawParticle(p) {
-  const R = p.size * (1 + morph * 0.55) * (0.82 + smoothVolume * 0.55);
+  // 0.3s soft scale-up when the flower is first born
+  const appear = smoothstep(0, APPEAR_MS, performance.now() - p.born);
+  const R = p.size * (1 + morph * 0.55) * (0.82 + smoothVolume * 0.55) * appear;
+  if (R < 0.4) return;
   const h = lerpHue(p.coldH, p.warmH, morph);
   const s = lerp(p.coldS, p.warmS, morph);
   const l = lerp(p.coldL, p.warmL, morph);
@@ -249,8 +289,8 @@ function drawParticle(p) {
   }
   ctx.closePath();
 
-  ctx.shadowColor = `hsla(${h},${s}%,${l}%,0.7)`;
-  ctx.shadowBlur = 12 + morph * 14 + smoothVolume * 14;
+  ctx.shadowColor = `hsla(${h},${clamp(s + 10, 0, 100)}%,${clamp(l + 6, 0, 100)}%,0.85)`;
+  ctx.shadowBlur = 30 + morph * 34 + smoothVolume * 30;
 
   // soft petal shading: lighter heart fading into a richer petal edge
   const grad = ctx.createRadialGradient(0, 0, R * 0.04, 0, 0, R);
@@ -264,17 +304,65 @@ function drawParticle(p) {
   ctx.strokeStyle = `hsla(${h},${clamp(s - 8, 0, 100)}%,${clamp(l - 22, 0, 100)}%,${a * 0.4})`;
   ctx.stroke();
 
-  // flower heart
-  if (morph > 0.25) {
-    ctx.beginPath();
-    ctx.arc(0, 0, R * 0.2 * morph, 0, Math.PI * 2);
-    ctx.fillStyle = `hsla(${lerpHue(h, 52, 0.6)},72%,86%,${a})`;
-    ctx.fill();
-  }
+  // warm yellow flower heart — always drawn
+  const heartR = R * (0.12 + morph * 0.14);
+  ctx.shadowColor = 'hsla(48,95%,68%,0.9)';
+  ctx.shadowBlur = 18 + morph * 16;
+  ctx.beginPath();
+  ctx.arc(0, 0, heartR, 0, Math.PI * 2);
+  ctx.fillStyle = `hsla(48,92%,66%,${a})`;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+// ---------- gently falling petals (after full bloom) ----------
+function makeFallingPetal() {
+  const palette = [
+    [336, 84, 66], [12, 88, 70], [272, 60, 72], [203, 78, 72], [132, 60, 66]
+  ];
+  const c = palette[Math.floor(Math.random() * palette.length)];
+  return {
+    x: rand(0, W), y: rand(-40, -10),
+    size: rand(4, 11),
+    speedY: rand(0.35, 0.95),
+    speedX: rand(-0.25, 0.25),
+    rot: rand(0, Math.PI * 2),
+    rotSpeed: rand(-0.02, 0.02),
+    sway: rand(0, Math.PI * 2),
+    swaySpeed: rand(0.005, 0.014),
+    h: c[0], s: c[1], l: c[2],
+    alpha: rand(0.4, 0.8)
+  };
+}
+
+function drawFallingPetal(p) {
+  p.sway += p.swaySpeed;
+  p.x += p.speedX + Math.sin(p.sway) * 0.6;
+  p.y += p.speedY;
+  p.rot += p.rotSpeed;
+
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate(p.rot);
+  ctx.beginPath();
+  ctx.moveTo(0, -p.size / 2);
+  ctx.bezierCurveTo(p.size * 0.45, -p.size * 0.3, p.size * 0.5, p.size * 0.25, 0, p.size * 0.6);
+  ctx.bezierCurveTo(-p.size * 0.5, p.size * 0.25, -p.size * 0.45, -p.size * 0.3, 0, -p.size / 2);
+  ctx.shadowColor = `hsla(${p.h},${p.s}%,${p.l}%,0.7)`;
+  ctx.shadowBlur = 8;
+  ctx.fillStyle = `hsla(${p.h},${p.s}%,${p.l}%,${p.alpha})`;
+  ctx.fill();
   ctx.restore();
 }
 
 function updateParticle(p) {
+  // geometry stays compact (original layout); flowers spread out 3x as they bloom
+  const spacing = lerp(0.092, 0.2208, morph);
+  const rad = Math.sqrt(p.idx) * Math.min(W, H) * spacing;
+  p.homeX = cx + Math.cos(p.ang) * rad;
+  p.homeY = cy + Math.sin(p.ang) * rad * 1.12;
+
   // spring toward home
   const dx = p.homeX - p.x, dy = p.homeY - p.y;
   p.vx += dx * 0.0022;
@@ -293,9 +381,34 @@ function updateParticle(p) {
   p.rot += p.rotSpeed * p.spin * (1 + smoothVolume * 9);
 }
 
+// ---------- scene control ----------
+function resetScene() {
+  progress = 0; morph = 0;
+  particles = []; fallingPetals = [];
+  finalStarted = false; lastPhase = 1;
+  bornCount = 0; lastBorn = 0;
+  phaseLabel.innerHTML = 'Phase I &mdash; Geometry';
+  phaseLabel.style.color = '';
+  progressFill.style.background = 'linear-gradient(90deg, #8fbaff, #ffffff)';
+  progressFill.style.width = '0%';
+  volFill.style.background = '';
+  const fm = document.getElementById('finalMsg');
+  fm.classList.remove('show'); fm.textContent = '';
+  backBtn.classList.remove('show');
+  ctx.clearRect(0, 0, W, H);
+}
+
+function beginScene() {
+  resetScene();
+  particles.push(makeParticle(bornCount++));   // first flower at the center
+  sceneActive = true;
+  intro.classList.add('hide');
+  hud.classList.add('show');
+}
+
 // ---------- audio ----------
 startBtn.addEventListener('click', async () => {
-  if (isRunning) return;
+  if (isRunning) { beginScene(); return; }   // returning from Back — just resume
   startBtn.disabled = true;
   startBtn.textContent = 'Connecting...';
   try {
@@ -310,15 +423,22 @@ startBtn.addEventListener('click', async () => {
     dataArray = new Uint8Array(analyser.frequencyBinCount);
 
     isRunning = true;
-    for (let i = 0; i < 7; i++) particles.push(makeParticle(true));
-
-    intro.classList.add('hide');
-    hud.classList.add('show');
+    startBtn.disabled = false;
+    startBtn.textContent = 'Begin Again';
+    beginScene();
     loop();
   } catch (e) {
     startBtn.disabled = false;
     startBtn.textContent = 'Microphone blocked — tap to retry';
   }
+});
+
+// ---------- back to the first screen ----------
+backBtn.addEventListener('click', () => {
+  sceneActive = false;
+  hud.classList.remove('show');
+  intro.classList.remove('hide');
+  resetScene();
 });
 
 function getVolume() {
@@ -332,47 +452,73 @@ let lastPhase = 1;
 function loop() {
   requestAnimationFrame(loop);
 
+  // transparent background — clear each frame
+  ctx.clearRect(0, 0, W, H);
+  if (!analyser) return;
+
   volume = getVolume();
   smoothVolume += (volume - smoothVolume) * 0.22;
 
-  // accumulate voice energy into progress
-  progress = clamp(progress + smoothVolume * 0.0024, 0, 1);
-  // smooth 2-3s style transition centered around the 50% mark
-  morph = smoothstep(0.5, 0.78, progress);
+  if (sceneActive) {
+    // accumulate voice energy into progress
+    progress = clamp(progress + smoothVolume * 0.0024, 0, 1);
+    // smooth 2-3s style transition centered around the 50% mark
+    morph = smoothstep(0.5, 0.78, progress);
 
-  // HUD
-  progressFill.style.width = (progress * 100).toFixed(1) + '%';
-  volFill.style.width = Math.min(smoothVolume * 320, 100) + '%';
+    // HUD
+    progressFill.style.width = (progress * 100).toFixed(1) + '%';
+    volFill.style.width = Math.min(smoothVolume * 320, 100) + '%';
 
-  if (morph > 0.5 && lastPhase === 1) {
-    lastPhase = 2;
-    phaseLabel.innerHTML = 'Phase II &mdash; Bloom';
-    phaseLabel.style.color = 'rgba(255,210,225,0.85)';
-    bottomHint.textContent = 'The flowers are blooming';
-    bottomHint.style.color = 'rgba(255,210,225,0.55)';
-    progressFill.style.background = 'linear-gradient(90deg, #ffb6cf, #fff3c4)';
-    volFill.style.background = 'rgba(255,200,220,0.85)';
-  } else if (morph <= 0.5 && lastPhase === 2) {
-    lastPhase = 1;
-    phaseLabel.innerHTML = 'Phase I &mdash; Geometry';
-    phaseLabel.style.color = '';
-    bottomHint.textContent = 'Speak — let the shapes bloom';
-    bottomHint.style.color = '';
-    progressFill.style.background = 'linear-gradient(90deg, #8fbaff, #ffffff)';
-    volFill.style.background = '';
-  }
+    // full bloom: reveal the closing message once, typed one letter at a time
+    if (progress >= 1 && !finalStarted) {
+      finalStarted = true;
+      const finalMsg = document.getElementById('finalMsg');
+      finalMsg.classList.add('show');
+      const text = 'The flowers sway and fall';
+      let i = 0;
+      const typer = setInterval(() => {
+        finalMsg.textContent = text.slice(0, i + 1);
+        i++;
+        if (i >= text.length) clearInterval(typer);
+      }, 180);
+    }
 
-  // transparent background — clear each frame
-  ctx.clearRect(0, 0, W, H);
+    if (morph > 0.5 && lastPhase === 1) {
+      lastPhase = 2;
+      phaseLabel.innerHTML = 'Phase II &mdash; Bloom';
+      phaseLabel.style.color = 'rgba(255,210,225,0.85)';
+      progressFill.style.background = 'linear-gradient(90deg, #ffb6cf, #fff3c4)';
+      volFill.style.background = 'rgba(255,200,220,0.85)';
+      backBtn.classList.add('show');           // only in the flower scene
+    } else if (morph <= 0.5 && lastPhase === 2) {
+      lastPhase = 1;
+      phaseLabel.innerHTML = 'Phase I &mdash; Geometry';
+      phaseLabel.style.color = '';
+      progressFill.style.background = 'linear-gradient(90deg, #8fbaff, #ffffff)';
+      volFill.style.background = '';
+      backBtn.classList.remove('show');
+    }
 
-  // spawn more particles as voice splits / diffuses the geometry
-  if (smoothVolume > 0.18 && particles.length < MAX_PARTICLES && Math.random() < 0.18) {
-    particles.push(makeParticle(false));
+    // one flower at a time: each new voice burst gives birth to a single bloom
+    const now = performance.now();
+    if (smoothVolume > 0.16 && particles.length < MAX_PARTICLES && now - lastBorn > 360) {
+      lastBorn = now;
+      particles.push(makeParticle(bornCount++));
+    }
   }
 
   for (const p of particles) {
     updateParticle(p);
     drawParticle(p);
+  }
+
+  // after the closing message, small petals drift slowly down from the top
+  if (sceneActive && finalStarted) {
+    if (fallingPetals.length < 70 && Math.random() < 0.12) {
+      fallingPetals.push(makeFallingPetal());
+    }
+    for (const fp of fallingPetals) drawFallingPetal(fp);
+    fallingPetals = fallingPetals.filter(fp => fp.y < H + 30);
   }
 }
 </script>
