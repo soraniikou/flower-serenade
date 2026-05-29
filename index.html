@@ -167,6 +167,10 @@ const phaseLabel = document.getElementById('phaseLabel');
 const backBtn = document.getElementById('backBtn');
 const volFill = document.getElementById('volFill');
 
+const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+  || (window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+const SIZE_SCALE = isMobile ? 0.7 : 1;   // smaller petals on phones only
+
 let W, H, cx, cy, DPR;
 let audioCtx;
 let analyser, dataArray;
@@ -239,7 +243,7 @@ function makeParticle(index) {
     x: cx, y: cy,                       // every flower is born at the center
     born: performance.now(),
     vx: 0, vy: 0,
-    size: rand(15, 56),
+    size: rand(15, 56) * SIZE_SCALE,
     rot: rand(0, Math.PI * 2),
     rotSpeed: rand(-0.011, 0.011),
     sides: sidesPool[Math.floor(Math.random() * sidesPool.length)],
