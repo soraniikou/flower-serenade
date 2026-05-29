@@ -245,7 +245,7 @@ function makeParticle(index) {
     vx: 0, vy: 0,
     size: rand(15, 56) * SIZE_SCALE,
     rot: rand(0, Math.PI * 2),
-    rotSpeed: rand(-0.0077, 0.0077),
+    rotSpeed: rand(-0.00539, 0.00539),
     sides: sidesPool[Math.floor(Math.random() * sidesPool.length)],
     petals: [5, 6, 8][Math.floor(Math.random() * 3)],
     alpha: rand(0.45, 0.85),
@@ -368,17 +368,10 @@ function updateParticle(p) {
   p.homeX = cx + Math.cos(p.ang) * rad;
   p.homeY = cy + Math.sin(p.ang) * rad * 1.12;
 
-  // spring toward home
+  // spring toward home (settles in place — no floating)
   const dx = p.homeX - p.x, dy = p.homeY - p.y;
   p.vx += dx * 0.0022;
   p.vy += dy * 0.0022;
-
-  // outward dispersion driven by voice (split / diffuse)
-  const ox = p.x - cx, oy = p.y - cy;
-  const dist = Math.hypot(ox, oy) || 1;
-  const push = smoothVolume * p.disp * 0.9;
-  p.vx += (ox / dist) * push;
-  p.vy += (oy / dist) * push;
 
   p.vx *= 0.93; p.vy *= 0.93;
   p.x += p.vx; p.y += p.vy;
