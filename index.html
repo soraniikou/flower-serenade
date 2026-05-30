@@ -476,16 +476,8 @@ function loop() {
       finalStarted = true;
 
       const voice = new Audio('audio/voice-final.mp3');
-      voice.volume = 0;
-      voice.play();
-
-      // 0.5秒かけてフェードイン
-      let vol = 0;
-      const fadeIn = setInterval(() => {
-        vol = Math.min(vol + 0.05, 1);
-        voice.volume = vol;
-        if (vol >= 1) clearInterval(fadeIn);
-      }, 25);
+      voice.volume = 1;
+      voice.play().catch(err => console.log('再生エラー:', err));
 
       // 音声終了の2秒前からフェードアウト
       voice.addEventListener('timeupdate', () => {
