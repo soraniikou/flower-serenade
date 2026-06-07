@@ -28,13 +28,30 @@
   #intro.hide { opacity: 0; pointer-events: none; }
 
   #title {
+    position: relative; z-index: 2;
     font-family: 'Great Vibes', cursive;
-    font-size: clamp(54px, 16vw, 92px);
+    font-size: clamp(40px, 11vw, 80px);
+    max-width: 92vw;
+    padding: 0 4vw;
+    white-space: nowrap;
     font-weight: 400; letter-spacing: 0.02em; line-height: 1.1;
     background: linear-gradient(90deg, #bcd6ff, #ffffff, #f3d6ec);
     -webkit-background-clip: text; background-clip: text;
     -webkit-text-fill-color: transparent;
   }
+  #startBtn { position: relative; z-index: 2; }
+
+  #hydrangeaWrap {
+    position: absolute; inset: 0;
+    pointer-events: none; z-index: 0; overflow: hidden;
+  }
+  .hydrangea {
+    position: absolute;
+    width: clamp(60px, 16vw, 110px); height: auto;
+    filter: blur(1px) brightness(1.12) drop-shadow(0 6px 14px rgba(20,30,60,0.4));
+  }
+  #hydBlue { top: 33%; left: 13%; transform: rotate(-9deg); }
+  #hydPink { top: 30%; right: 13%; transform: rotate(9deg); }
   #subtitle {
     font-size: clamp(12px, 3.4vw, 15px);
     font-weight: 300; letter-spacing: 0.34em;
@@ -150,9 +167,8 @@
 </div>
 
 <div id="intro">
+  <div id="hydrangeaWrap"></div>
   <div id="title">Flower Serenade</div>
-  <div id="subtitle">A voice reactive bloom</div>
-  <div id="desc">Geometry awakens to your voice and slowly transforms into a field of blossoming flowers.</div>
   <button id="startBtn">Enable Microphone</button>
 </div>
 
@@ -198,6 +214,69 @@ function resize() {
 }
 window.addEventListener('resize', resize);
 resize();
+
+// ---------- decorative hydrangeas on the intro screen ----------
+function buildHydrangea(gradId, colors, opts) {
+  const o = opts || {};
+  const spread = o.spread != null ? o.spread : 96;
+  const rMin = o.rMin != null ? o.rMin : 22;
+  const rRange = o.rRange != null ? o.rRange : 11;
+  // each floret = 4 rounded petals + center, many florets form a glossy head
+  function floret(fx, fy, r) {
+    let s = `<g transform="translate(${fx.toFixed(1)},${fy.toFixed(1)})">`;
+    for (let k = 0; k < 4; k++) {
+      const a = k * 90 + 45;
+      s += `<g transform="rotate(${a})">`
+        + `<ellipse cx="0" cy="${(-r * 0.5).toFixed(1)}" rx="${(r * 0.42).toFixed(1)}" ry="${(r * 0.56).toFixed(1)}" `
+        + `fill="url(#${gradId})" stroke="${colors.edge}" stroke-width="0.6"/>`
+        + `<ellipse cx="${(-r * 0.12).toFixed(1)}" cy="${(-r * 0.72).toFixed(1)}" rx="${(r * 0.13).toFixed(1)}" ry="${(r * 0.2).toFixed(1)}" `
+        + `fill="#ffffff" opacity="0.5"/>`
+        + `</g>`;
+    }
+    s += `<circle r="${(r * 0.16).toFixed(1)}" fill="${colors.center}"/></g>`;
+    return s;
+  }
+
+  const florets = [];
+  const N = 8;
+  for (let i = 0; i < N; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const rad = Math.sqrt(Math.random()) * spread;
+    const fx = 120 + Math.cos(ang) * rad;
+    const fy = 120 + Math.sin(ang) * rad * 0.9;
+    const r = rMin + Math.random() * rRange;
+    florets.push({ fx, fy, r });
+  }
+  florets.sort((a, b) => a.fy - b.fy);            // lower florets drawn in front
+  const body = florets.map(f => floret(f.fx, f.fy, f.r)).join('');
+
+  return `<svg class="hydrangea" id="${colors.id}" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">`
+    + `<defs>`
+    + `<radialGradient id="${gradId}" cx="38%" cy="30%" r="78%">`
+    + `<stop offset="0%" stop-color="#ffffff"/>`
+    + `<stop offset="22%" stop-color="${colors.hi}"/>`
+    + `<stop offset="62%" stop-color="${colors.mid}"/>`
+    + `<stop offset="100%" stop-color="${colors.deep}"/>`
+    + `</radialGradient>`
+    + `</defs>`
+    + body
+    + `<ellipse cx="92" cy="84" rx="70" ry="46" fill="#ffffff" opacity="0.1"/>`  // soft overall sheen
+    + `</svg>`;
+}
+
+(function placeHydrangeas() {
+  const wrap = document.getElementById('hydrangeaWrap');
+  if (!wrap) return;
+  const blue = buildHydrangea('hgBlue', {
+    id: 'hydBlue', hi: '#d4e3ff', mid: '#9bbcff', deep: '#6f9bff',
+    edge: 'rgba(90,134,240,0.5)', center: '#fff1a8'
+  });
+  const pink = buildHydrangea('hgPink', {
+    id: 'hydPink', hi: '#ffd9ec', mid: '#f3a8cd', deep: '#e87fb4',
+    edge: 'rgba(217,106,163,0.5)', center: '#fff1a8'
+  }, { spread: 100, rMin: 15, rRange: 7 });
+  wrap.innerHTML = blue + pink;
+})();
 
 // ---------- helpers ----------
 function rand(a, b) { return a + Math.random() * (b - a); }
@@ -324,7 +403,8 @@ function drawParticle(p) {
 // ---------- gently falling petals (after full bloom) ----------
 function makeFallingPetal() {
   const palette = [
-    [336, 84, 66], [12, 88, 70], [272, 60, 72], [203, 78, 72], [132, 60, 66]
+    [336, 84, 66], [12, 88, 70], [272, 60, 72], [203, 78, 72], [132, 60, 66],
+    [218, 82, 72], [328, 78, 78]
   ];
   const c = palette[Math.floor(Math.random() * palette.length)];
   return {
