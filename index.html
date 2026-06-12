@@ -625,12 +625,24 @@ function loop() {
 
       const finalMsg = document.getElementById('finalMsg');
       finalMsg.classList.add('show');
-      const text = 'The flowers sway and fall';
+      const text1 = 'The flowers sway and fall';
+      const text2 = 'you are enough';
       let i = 0;
       const typer = setInterval(() => {
-        finalMsg.textContent = text.slice(0, i + 1);
+        finalMsg.textContent = text1.slice(0, i + 1);
         i++;
-        if (i >= text.length) clearInterval(typer);
+        if (i >= text1.length) {
+          clearInterval(typer);
+          // 3秒後に "you are enough" を1文字ずつ追加表示
+          setTimeout(() => {
+            let j = 0;
+            const typer2 = setInterval(() => {
+              finalMsg.innerHTML = text1 + '<br>' + text2.slice(0, j + 1);
+              j++;
+              if (j >= text2.length) clearInterval(typer2);
+            }, 180);
+          }, 3000);
+        }
       }, 180);
     }
 
