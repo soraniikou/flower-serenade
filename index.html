@@ -442,7 +442,7 @@ function drawParticle(p) {
   ctx.closePath();
 
   ctx.shadowColor = `hsla(${h},${clamp(s + 10, 0, 100)}%,${clamp(l + 6, 0, 100)}%,0.85)`;
-  ctx.shadowBlur = 30 + morph * 34 + smoothVolume * 30;
+  ctx.shadowBlur = 0;
 
   // soft petal shading: lighter heart fading into a richer petal edge
   const grad = ctx.createRadialGradient(0, 0, R * 0.04, 0, 0, R);
