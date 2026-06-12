@@ -623,18 +623,6 @@ function loop() {
     if (progress >= 1 && !finalStarted) {
       finalStarted = true;
 
-      const voice = new Audio('public/audio/voice-final.mp3');
-      voice.volume = 1;
-      voice.play().catch(err => console.log('再生エラー:', err));
-
-      // 音声終了の2秒前からフェードアウト
-      voice.addEventListener('timeupdate', () => {
-        const remaining = voice.duration - voice.currentTime;
-        if (remaining < 2 && voice.volume > 0) {
-          voice.volume = Math.max(voice.volume - 0.015, 0);
-        }
-      });
-
       const finalMsg = document.getElementById('finalMsg');
       finalMsg.classList.add('show');
       const text = 'The flowers sway and fall';
