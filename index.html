@@ -56,6 +56,52 @@
   @media (max-width: 768px) {
     #title { font-size: clamp(32px, 8.8vw, 64px); }
   }
+
+  /* ---------- parakeets around "Serenade" ---------- */
+  #birds {
+    position: absolute; inset: 0;
+    pointer-events: none; z-index: 2; overflow: hidden;
+  }
+  .bird {
+    position: absolute;
+    width: clamp(26px, 6.5vw, 46px); height: auto;
+    filter: blur(1px) drop-shadow(0 3px 6px rgba(20,30,60,0.25));
+  }
+  .bird .body { fill: currentColor; }
+  .bird .wing { fill: currentColor; transform-box: fill-box; }
+  .bird .wl { transform-origin: 100% 55%; animation: flapL 1.9s ease-in-out infinite; }
+  .bird .wr { transform-origin: 0% 55%;   animation: flapR 1.9s ease-in-out infinite; }
+
+  @keyframes flapL { 0%,100% { transform: rotate(8deg); } 50% { transform: rotate(-28deg); } }
+  @keyframes flapR { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(28deg); } }
+
+  /* pink parakeet: hovers / sways above the "S" of Serenade */
+  #birdPink {
+    top: 34%; left: 50%;
+    color: rgba(238,140,184,0.7);
+    animation: parrotSway 3.6s ease-in-out infinite;
+  }
+  @keyframes parrotSway {
+    0%,100% { transform: translate(0, 0) rotate(-6deg); }
+    50%     { transform: translate(0, -9px) rotate(6deg); }
+  }
+
+  /* green parakeet: flies in from far away toward the pink one */
+  #birdGreen {
+    top: 34%; left: 54%;
+    color: rgba(108,196,128,0.7);
+    animation: parrotFlyIn 14s ease-in-out 1 forwards;
+  }
+  #birdGreen .wl { animation-duration: 1.6s; }
+  #birdGreen .wr { animation-duration: 1.6s; }
+  @keyframes parrotFlyIn {
+    0%   { transform: translate(300px, -40px) scale(0.3) rotate(8deg); opacity: 0; }
+    12%  { opacity: 1; }
+    35%  { transform: translate(160px, 100px) scale(0.55) rotate(8deg); opacity: 1; }
+    60%  { transform: translate(50px, 130px) scale(0.8) rotate(-6deg); opacity: 1; }
+    85%  { transform: translate(6px, 12px) scale(1) rotate(3deg); opacity: 1; }
+    100% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
+  }
   #subtitle {
     font-size: clamp(12px, 3.4vw, 15px);
     font-weight: 300; letter-spacing: 0.34em;
@@ -173,6 +219,24 @@
 <div id="intro">
   <div id="hydrangeaWrap"></div>
   <div id="title">Flower Serenade</div>
+  <div id="birds">
+    <svg class="bird" id="birdPink" viewBox="0 0 60 52">
+      <g class="wing wl"><path d="M30,24 Q14,7 1,18 Q14,21 30,29 Z"/></g>
+      <g class="wing wr"><path d="M30,24 Q46,7 59,18 Q46,21 30,29 Z"/></g>
+      <path class="body" d="M30,33 L26,50 L34,50 Z"/>
+      <ellipse class="body" cx="30" cy="26" rx="5" ry="9"/>
+      <circle class="body" cx="30" cy="14" r="4.2"/>
+      <path class="body" d="M27,16 Q30,23 33,16 Z"/>
+    </svg>
+    <svg class="bird" id="birdGreen" viewBox="0 0 60 52">
+      <g class="wing wl"><path d="M30,24 Q14,7 1,18 Q14,21 30,29 Z"/></g>
+      <g class="wing wr"><path d="M30,24 Q46,7 59,18 Q46,21 30,29 Z"/></g>
+      <path class="body" d="M30,33 L26,50 L34,50 Z"/>
+      <ellipse class="body" cx="30" cy="26" rx="5" ry="9"/>
+      <circle class="body" cx="30" cy="14" r="4.2"/>
+      <path class="body" d="M27,16 Q30,23 33,16 Z"/>
+    </svg>
+  </div>
   <button id="startBtn">Enable Microphone</button>
 </div>
 
