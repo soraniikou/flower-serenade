@@ -16,3 +16,6 @@
 
 体験
 →https://flower-serenade.vercel.app
+
+🌸Please tap "Allow Microphone" on the first screen. After that, feel free to say whatever words you like. Your voice is not recorded, and no data is saved, so please speak freely. The inorganic patterns will gradually transform into flowers. I hope this brings a moment of stress relief to busy parents and anyone tied up with housework who can't take their hands away.
+​Try it here → https://flower-serenade.vercel.app
